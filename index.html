@@ -114,7 +114,11 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-  const TARGET_SHEET = 'grade sheet'; 
+  // ==========================================
+  // PASTE YOUR GOOGLE APPS SCRIPT URL HERE:
+  const API_URL = 'https://script.google.com/macros/s/AKfycbzxxjIJ0TiX0-8i8PlJrBCGOkITtp5XM6NXPm1-EoOgS9P4wIZY_xQ5-TqzK-0edN8Z/exec'; 
+  // ==========================================
+
   let globalData = [];
 
   document.addEventListener('DOMContentLoaded', loadData);
@@ -122,7 +126,21 @@
   function loadData() {
     document.getElementById('loadingSpinner').classList.remove('d-none');
     document.getElementById('tableContainer').classList.add('d-none');
-    google.script.run.withSuccessHandler(renderTable).getStudentsData(TARGET_SHEET);
+    
+    // Fetch data from Google Sheets API
+    fetch(API_URL)
+      .then(response => response.json())
+      .then(result => {
+        if(result.status === "success") {
+          renderTable(result.data);
+        } else {
+          alert("Error loading data: " + result.message);
+        }
+      })
+      .catch(error => {
+        console.error("Fetch error:", error);
+        document.getElementById('loadingSpinner').innerHTML = "<p class='text-danger'>Failed to connect to API.</p>";
+      });
   }
 
   function renderTable(data) {
@@ -130,19 +148,15 @@
     const thead = document.getElementById('tableHead');
     const tbody = document.getElementById('tableBody');
     thead.innerHTML = ''; tbody.innerHTML = '';
-    if (data.length === 0) return;
+    if (!data || data.length === 0) return;
 
-    // Build simplified headers for the dashboard
     thead.innerHTML = `<tr>
       <th>Name</th><th>Code</th><th>AutoCAD</th><th>Evo</th><th>Excel</th>
       <th>T1</th><th>T2</th><th>T3</th><th>T4</th><th>Action</th>
     </tr>`;
 
-    // Process rows (Skipping headers in rows 0 and 1)
     for (let i = 2; i < data.length; i++) {
       const row = data[i];
-      // Only show the main student row (where Name and Code exist)
-      // This hides the attendance/bonus sub-rows from the main table view
       if(row[0] && row[1] && row[1].includes('EDUR9')) { 
         tbody.innerHTML += `<tr>
           <td class="fw-bold">${row[0]}</td>
@@ -163,8 +177,6 @@
 
   function openEditModal(rowIndex) {
     const row = globalData[rowIndex];
-    
-    // Fill the form with existing data based on column indexes
     document.getElementById('f_name').value = row[0];
     document.getElementById('f_code').value = row[1];
     
@@ -191,7 +203,6 @@
     btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
     btn.disabled = true;
 
-    // Create a payload object with all values
     const payload = {
       name: document.getElementById('f_name').value,
       code: document.getElementById('f_code').value,
@@ -210,14 +221,30 @@
       task10: document.getElementById('f_t10').value,
     };
 
-    google.script.run
-      .withSuccessHandler(function(response) {
+    // Send data to Google API
+    fetch(API_URL, {
+      method: "POST",
+      // CRITICAL: We use text/plain to bypass strict browser CORS rules when posting to Google Scripts
+      headers: { "Content-Type": "text/plain;charset=utf-8" }, 
+      body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(result => {
+      if(result.status === "success") {
         bootstrap.Modal.getInstance(document.getElementById('studentModal')).hide();
-        btn.innerHTML = '<i class="fas fa-save me-1"></i> Save Grades';
-        btn.disabled = false;
         loadData(); // Refresh the table
-      })
-      .saveStudentData(TARGET_SHEET, payload);
+      } else {
+        alert("Error saving: " + result.message);
+      }
+    })
+    .catch(error => {
+      console.error("Save error:", error);
+      alert("Failed to save data. Check console.");
+    })
+    .finally(() => {
+      btn.innerHTML = '<i class="fas fa-save me-1"></i> Save Grades';
+      btn.disabled = false;
+    });
   }
 </script>
 </body>
