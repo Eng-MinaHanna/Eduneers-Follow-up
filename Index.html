@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Diploma Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #f8f9fa; font-family: 'Segoe UI', sans-serif; }
+    .card { border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: none; }
+    .table-responsive { max-height: 650px; overflow-y: auto; }
+    thead th { position: sticky; top: 0; background-color: #2c3e50; color: white; z-index: 1; font-size: 0.9rem;}
+    tbody td { font-size: 0.9rem; vertical-align: middle; }
+    .section-title { font-size: 1.1rem; border-bottom: 2px solid #e9ecef; padding-bottom: 5px; margin-bottom: 15px; margin-top: 15px; color: #0d6efd;}
+  </style>
+</head>
+<body>
+
+<div class="container-fluid py-4">
+  <div class="row mb-4 align-items-center">
+    <div class="col-md-8">
+      <h2 class="fw-bold text-primary"><i class="fas fa-laptop-code me-2"></i>Diploma Management System</h2>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <div class="d-flex justify-content-between mb-3">
+        <h5 class="card-title">Grade Sheet Overview</h5>
+        <button class="btn btn-outline-primary btn-sm" onclick="loadData()">
+          <i class="fas fa-sync-alt"></i> Refresh Data
+        </button>
+      </div>
+      
+      <div class="text-center my-5" id="loadingSpinner">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-2 text-muted">Loading sheet data...</p>
+      </div>
+
+      <div class="table-responsive d-none" id="tableContainer">
+        <table class="table table-hover table-bordered table-striped" id="dataTable">
+          <thead id="tableHead"></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="studentModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="fas fa-user-edit me-2"></i>Update Student Grades</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="studentForm">
+          
+          <div class="section-title">Basic Information</div>
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label text-muted small mb-0">Full Name</label>
+              <input type="text" class="form-control" id="f_name" readonly>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label text-muted small mb-0">Student Code</label>
+              <input type="text" class="form-control fw-bold" id="f_code" readonly>
+            </div>
+          </div>
+
+          <div class="section-title">Software Grades</div>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label small">AutoCAD</label>
+              <input type="number" class="form-control" id="f_autocad">
+            </div>
+             <div class="col-md-4">
+              <label class="form-label small">Dialux Evo</label>
+              <input type="number" class="form-control" id="f_evo">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small">Excel</label>
+              <input type="number" class="form-control" id="f_excel">
+            </div>
+          </div>
+
+          <div class="section-title">Main Tasks (1-10)</div>
+          <div class="row g-3">
+            <div class="col-md-2"><label class="form-label small">Task 1</label><input type="number" class="form-control" id="f_t1"></div>
+            <div class="col-md-2"><label class="form-label small">Task 2</label><input type="number" class="form-control" id="f_t2"></div>
+            <div class="col-md-2"><label class="form-label small">Task 3</label><input type="number" class="form-control" id="f_t3"></div>
+            <div class="col-md-2"><label class="form-label small">Task 4</label><input type="number" class="form-control" id="f_t4"></div>
+            <div class="col-md-2"><label class="form-label small">Task 5</label><input type="number" class="form-control" id="f_t5"></div>
+            <div class="col-md-2"><label class="form-label small">Task 6</label><input type="number" class="form-control" id="f_t6"></div>
+            <div class="col-md-2"><label class="form-label small">Task 7</label><input type="number" class="form-control" id="f_t7"></div>
+            <div class="col-md-2"><label class="form-label small">Task 8</label><input type="number" class="form-control" id="f_t8"></div>
+            <div class="col-md-2"><label class="form-label small">Task 9</label><input type="number" class="form-control" id="f_t9"></div>
+            <div class="col-md-2"><label class="form-label small">Task 10</label><input type="number" class="form-control" id="f_t10"></div>
+          </div>
+
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-success" onclick="saveData()" id="saveBtn">
+          <i class="fas fa-save me-1"></i> Save Grades
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  const TARGET_SHEET = 'grade sheet'; 
+  let globalData = [];
+
+  document.addEventListener('DOMContentLoaded', loadData);
+
+  function loadData() {
+    document.getElementById('loadingSpinner').classList.remove('d-none');
+    document.getElementById('tableContainer').classList.add('d-none');
+    google.script.run.withSuccessHandler(renderTable).getStudentsData(TARGET_SHEET);
+  }
+
+  function renderTable(data) {
+    globalData = data; 
+    const thead = document.getElementById('tableHead');
+    const tbody = document.getElementById('tableBody');
+    thead.innerHTML = ''; tbody.innerHTML = '';
+    if (data.length === 0) return;
+
+    // Build simplified headers for the dashboard
+    thead.innerHTML = `<tr>
+      <th>Name</th><th>Code</th><th>AutoCAD</th><th>Evo</th><th>Excel</th>
+      <th>T1</th><th>T2</th><th>T3</th><th>T4</th><th>Action</th>
+    </tr>`;
+
+    // Process rows (Skipping headers in rows 0 and 1)
+    for (let i = 2; i < data.length; i++) {
+      const row = data[i];
+      // Only show the main student row (where Name and Code exist)
+      // This hides the attendance/bonus sub-rows from the main table view
+      if(row[0] && row[1] && row[1].includes('EDUR9')) { 
+        tbody.innerHTML += `<tr>
+          <td class="fw-bold">${row[0]}</td>
+          <td><span class="badge bg-secondary">${row[1]}</span></td>
+          <td>${row[2]}</td><td>${row[3]}</td><td>${row[4]}</td>
+          <td>${row[6]}</td><td>${row[7]}</td><td>${row[9]}</td><td>${row[10]}</td>
+          <td>
+            <button class="btn btn-sm btn-primary" onclick="openEditModal(${i})">
+              <i class="fas fa-edit"></i> Edit
+            </button>
+          </td>
+        </tr>`;
+      }
+    }
+    document.getElementById('loadingSpinner').classList.add('d-none');
+    document.getElementById('tableContainer').classList.remove('d-none');
+  }
+
+  function openEditModal(rowIndex) {
+    const row = globalData[rowIndex];
+    
+    // Fill the form with existing data based on column indexes
+    document.getElementById('f_name').value = row[0];
+    document.getElementById('f_code').value = row[1];
+    
+    document.getElementById('f_autocad').value = row[2] || 0;
+    document.getElementById('f_evo').value = row[3] || 0;
+    document.getElementById('f_excel').value = row[4] || 0;
+    
+    document.getElementById('f_t1').value = row[6] || 0;
+    document.getElementById('f_t2').value = row[7] || 0;
+    document.getElementById('f_t3').value = row[9] || 0;
+    document.getElementById('f_t4').value = row[10] || 0;
+    document.getElementById('f_t5').value = row[12] || 0;
+    document.getElementById('f_t6').value = row[13] || 0;
+    document.getElementById('f_t7').value = row[15] || 0;
+    document.getElementById('f_t8').value = row[16] || 0;
+    document.getElementById('f_t9').value = row[17] || 0;
+    document.getElementById('f_t10').value = row[18] || 0;
+
+    new bootstrap.Modal(document.getElementById('studentModal')).show();
+  }
+
+  function saveData() {
+    const btn = document.getElementById('saveBtn');
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+    btn.disabled = true;
+
+    // Create a payload object with all values
+    const payload = {
+      name: document.getElementById('f_name').value,
+      code: document.getElementById('f_code').value,
+      autocad: document.getElementById('f_autocad').value,
+      evo: document.getElementById('f_evo').value,
+      excel: document.getElementById('f_excel').value,
+      task1: document.getElementById('f_t1').value,
+      task2: document.getElementById('f_t2').value,
+      task3: document.getElementById('f_t3').value,
+      task4: document.getElementById('f_t4').value,
+      task5: document.getElementById('f_t5').value,
+      task6: document.getElementById('f_t6').value,
+      task7: document.getElementById('f_t7').value,
+      task8: document.getElementById('f_t8').value,
+      task9: document.getElementById('f_t9').value,
+      task10: document.getElementById('f_t10').value,
+    };
+
+    google.script.run
+      .withSuccessHandler(function(response) {
+        bootstrap.Modal.getInstance(document.getElementById('studentModal')).hide();
+        btn.innerHTML = '<i class="fas fa-save me-1"></i> Save Grades';
+        btn.disabled = false;
+        loadData(); // Refresh the table
+      })
+      .saveStudentData(TARGET_SHEET, payload);
+  }
+</script>
+</body>
+</html>
