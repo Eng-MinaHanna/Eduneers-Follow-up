@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Diploma Management System</title>
+  <title>Diploma Management System Pro</title>
   
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
@@ -11,11 +11,10 @@
   <style>
     body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     .card { border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: none; }
-    .table-responsive { max-height: 700px; overflow-y: auto; }
-    thead th { position: sticky; top: 0; background-color: #212529; color: white; z-index: 1; font-weight: 500; letter-spacing: 0.5px;}
+    .table-responsive { max-height: 650px; overflow-y: auto; }
+    thead th { position: sticky; top: 0; background-color: #212529; color: white; z-index: 1; font-weight: 500; }
     tbody td { vertical-align: middle; font-size: 0.95rem; }
     
-    /* Custom Styling for Modal Sections */
     .track-title { font-size: 1rem; font-weight: bold; padding-bottom: 8px; margin-top: 20px; margin-bottom: 15px; border-bottom: 2px solid #e9ecef; }
     .track-design { color: #0d6efd; border-color: #0d6efd; }
     .track-tech { color: #198754; border-color: #198754; }
@@ -23,33 +22,41 @@
     .track-software { color: #6f42c1; border-color: #6f42c1; }
     
     .input-sm { text-align: center; font-weight: bold; color: #495057; }
+    
+    /* Search Bar Animation */
+    .search-box:focus { box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); }
   </style>
 </head>
 <body>
 
 <div class="container-fluid py-4 px-4">
   <div class="row mb-4 align-items-center">
-    <div class="col-md-8">
+    <div class="col-md-6">
       <h2 class="fw-bolder text-dark mb-0"><i class="fas fa-graduation-cap text-primary me-2"></i>Diploma Dashboard</h2>
-      <p class="text-muted mt-1">Manage grades across Design, Technical Office, and Light Current tracks.</p>
+    </div>
+    <div class="col-md-6 mt-3 mt-md-0">
+      <div class="input-group shadow-sm rounded">
+        <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+        <input type="text" id="searchInput" class="form-control border-start-0 search-box" placeholder="Search by Student Name or Code..." onkeyup="filterTable()">
+      </div>
     </div>
   </div>
 
   <div class="card">
     <div class="card-body p-4">
       <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="card-title fw-bold m-0">Student Grade Database</h5>
-        <button class="btn btn-outline-primary" onclick="loadData()">
+        <h5 class="card-title fw-bold m-0 text-muted">Database Overview</h5>
+        <button class="btn btn-outline-primary btn-sm" onclick="loadData()">
           <i class="fas fa-sync-alt me-1"></i> Sync Data
         </button>
       </div>
       
       <div class="text-center my-5 py-5" id="loadingSpinner">
         <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
-        <h5 class="mt-3 text-muted">Connecting to Google Sheets...</h5>
+        <h5 class="mt-3 text-muted">Connecting securely to Google Sheets...</h5>
       </div>
 
-      <div class="table-responsive d-none shadow-sm rounded border" id="tableContainer">
+      <div class="table-responsive d-none rounded border" id="tableContainer">
         <table class="table table-hover table-striped mb-0" id="dataTable">
           <thead id="tableHead"></thead>
           <tbody id="tableBody"></tbody>
@@ -59,7 +66,18 @@
   </div>
 </div>
 
-<div class="modal fade" id="studentModal" tabindex="-1" aria-hidden="true">
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+  <div id="statusToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body fw-bold" id="toastMessage">
+        Record saved successfully!
+      </div>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="studentModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
   <div class="modal-dialog modal-xl modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header bg-dark text-white border-0">
@@ -69,7 +87,6 @@
       
       <div class="modal-body px-5 pb-4">
         <form id="studentForm">
-          
           <div class="row g-3 bg-light p-3 rounded mt-2 border">
             <div class="col-md-8">
               <label class="form-label text-muted small fw-bold mb-1">Student Name</label>
@@ -83,42 +100,41 @@
 
           <div class="track-title track-software"><i class="fas fa-desktop me-2"></i>Software Grades</div>
           <div class="row g-3">
-            <div class="col-md-4"><label class="form-label small">AutoCAD</label><input type="number" class="form-control input-sm" id="f_autocad"></div>
-            <div class="col-md-4"><label class="form-label small">Dialux Evo</label><input type="number" class="form-control input-sm" id="f_evo"></div>
-            <div class="col-md-4"><label class="form-label small">Excel</label><input type="number" class="form-control input-sm" id="f_excel"></div>
+            <div class="col-md-4"><label class="form-label small">AutoCAD</label><input type="number" step="any" class="form-control input-sm" id="f_autocad"></div>
+            <div class="col-md-4"><label class="form-label small">Dialux Evo</label><input type="number" step="any" class="form-control input-sm" id="f_evo"></div>
+            <div class="col-md-4"><label class="form-label small">Excel</label><input type="number" step="any" class="form-control input-sm" id="f_excel"></div>
           </div>
 
           <div class="track-title track-design"><i class="fas fa-drafting-compass me-2"></i>Design Track</div>
           <div class="row g-2 mb-2">
-            <div class="col"><label class="form-label small text-muted">T1</label><input type="number" class="form-control input-sm" id="f_t1"></div>
-            <div class="col"><label class="form-label small text-muted">T2</label><input type="number" class="form-control input-sm" id="f_t2"></div>
-            <div class="col"><label class="form-label small text-muted">T3</label><input type="number" class="form-control input-sm" id="f_t3"></div>
-            <div class="col"><label class="form-label small text-muted">T4</label><input type="number" class="form-control input-sm" id="f_t4"></div>
-            <div class="col"><label class="form-label small text-muted">T5</label><input type="number" class="form-control input-sm" id="f_t5"></div>
+            <div class="col"><label class="form-label small text-muted">T1</label><input type="number" step="any" class="form-control input-sm" id="f_t1"></div>
+            <div class="col"><label class="form-label small text-muted">T2</label><input type="number" step="any" class="form-control input-sm" id="f_t2"></div>
+            <div class="col"><label class="form-label small text-muted">T3</label><input type="number" step="any" class="form-control input-sm" id="f_t3"></div>
+            <div class="col"><label class="form-label small text-muted">T4</label><input type="number" step="any" class="form-control input-sm" id="f_t4"></div>
+            <div class="col"><label class="form-label small text-muted">T5</label><input type="number" step="any" class="form-control input-sm" id="f_t5"></div>
           </div>
           <div class="row g-2">
-            <div class="col"><label class="form-label small text-muted">T6</label><input type="number" class="form-control input-sm" id="f_t6"></div>
-            <div class="col"><label class="form-label small text-muted">T7</label><input type="number" class="form-control input-sm" id="f_t7"></div>
-            <div class="col"><label class="form-label small text-muted">T8</label><input type="number" class="form-control input-sm" id="f_t8"></div>
-            <div class="col"><label class="form-label small text-muted">T9</label><input type="number" class="form-control input-sm" id="f_t9"></div>
-            <div class="col"><label class="form-label small text-muted">T10</label><input type="number" class="form-control input-sm" id="f_t10"></div>
+            <div class="col"><label class="form-label small text-muted">T6</label><input type="number" step="any" class="form-control input-sm" id="f_t6"></div>
+            <div class="col"><label class="form-label small text-muted">T7</label><input type="number" step="any" class="form-control input-sm" id="f_t7"></div>
+            <div class="col"><label class="form-label small text-muted">T8</label><input type="number" step="any" class="form-control input-sm" id="f_t8"></div>
+            <div class="col"><label class="form-label small text-muted">T9</label><input type="number" step="any" class="form-control input-sm" id="f_t9"></div>
+            <div class="col"><label class="form-label small text-muted">T10</label><input type="number" step="any" class="form-control input-sm" id="f_t10"></div>
           </div>
 
           <div class="track-title track-tech"><i class="fas fa-building me-2"></i>Technical Office Track</div>
           <div class="row g-2">
-            <div class="col-md-3"><label class="form-label small text-muted">Task 11</label><input type="number" class="form-control input-sm" id="f_t11"></div>
-            <div class="col-md-3"><label class="form-label small text-muted">Task 12</label><input type="number" class="form-control input-sm" id="f_t12"></div>
-            <div class="col-md-3"><label class="form-label small text-muted">Task 13</label><input type="number" class="form-control input-sm" id="f_t13"></div>
-            <div class="col-md-3"><label class="form-label small text-muted">Task 14</label><input type="number" class="form-control input-sm" id="f_t14"></div>
+            <div class="col-md-3"><label class="form-label small text-muted">Task 11</label><input type="number" step="any" class="form-control input-sm" id="f_t11"></div>
+            <div class="col-md-3"><label class="form-label small text-muted">Task 12</label><input type="number" step="any" class="form-control input-sm" id="f_t12"></div>
+            <div class="col-md-3"><label class="form-label small text-muted">Task 13</label><input type="number" step="any" class="form-control input-sm" id="f_t13"></div>
+            <div class="col-md-3"><label class="form-label small text-muted">Task 14</label><input type="number" step="any" class="form-control input-sm" id="f_t14"></div>
           </div>
 
           <div class="track-title track-light"><i class="fas fa-network-wired me-2"></i>Light Current Track</div>
           <div class="row g-2">
-            <div class="col-md-4"><label class="form-label small text-muted">Task 15</label><input type="number" class="form-control input-sm" id="f_t15"></div>
-            <div class="col-md-4"><label class="form-label small text-muted">Task 16</label><input type="number" class="form-control input-sm" id="f_t16"></div>
-            <div class="col-md-4"><label class="form-label small text-muted">Task 17</label><input type="number" class="form-control input-sm" id="f_t17"></div>
+            <div class="col-md-4"><label class="form-label small text-muted">Task 15</label><input type="number" step="any" class="form-control input-sm" id="f_t15"></div>
+            <div class="col-md-4"><label class="form-label small text-muted">Task 16</label><input type="number" step="any" class="form-control input-sm" id="f_t16"></div>
+            <div class="col-md-4"><label class="form-label small text-muted">Task 17</label><input type="number" step="any" class="form-control input-sm" id="f_t17"></div>
           </div>
-
         </form>
       </div>
       <div class="modal-footer border-top p-3 bg-light">
@@ -136,7 +152,7 @@
 <script>
   // =========================================================================
   // 🚨 PASTE YOUR GOOGLE APPS SCRIPT API URL HERE 🚨
-  const API_URL = 'https://script.google.com/macros/s/AKfycbz4a7u8kcmGjK4c97AVt6lU3-IzrvLuY3HrWQPwYG9ww6xjSYk3HwIqLd8IcX6lU8x3/exec'; 
+  const API_URL = 'https://script.google.com/macros/s/AKfycbzbxOqaLr0Z8ylID4iqSkdxDO7akYCGrnjjxEYhFlSx9URaIYp-bA7nymORoN-fAa2t/exec'; 
   // =========================================================================
 
   let globalData = [];
@@ -146,6 +162,7 @@
   function loadData() {
     document.getElementById('loadingSpinner').classList.remove('d-none');
     document.getElementById('tableContainer').classList.add('d-none');
+    document.getElementById('searchInput').value = ''; // Reset search
     
     fetch(API_URL)
       .then(response => response.json())
@@ -153,12 +170,11 @@
         if(result.status === "success") {
           renderTable(result.data);
         } else {
-          alert("Error loading data: " + result.message);
+          showToast("Error loading data: " + result.message, "danger");
         }
       })
       .catch(error => {
-        console.error("Fetch error:", error);
-        document.getElementById('loadingSpinner').innerHTML = "<h5 class='text-danger mt-3'><i class='fas fa-exclamation-triangle me-2'></i>Failed to connect to Database.</h5>";
+        document.getElementById('loadingSpinner').innerHTML = "<h5 class='text-danger mt-3'><i class='fas fa-exclamation-triangle me-2'></i>Failed to connect. Check internet.</h5>";
       });
   }
 
@@ -170,7 +186,6 @@
     
     if (!data || data.length === 0) return;
 
-    // We show a simplified view on the main table to keep it clean
     thead.innerHTML = `<tr>
       <th style="width: 25%">Student Name</th>
       <th style="width: 15%">Code</th>
@@ -182,9 +197,11 @@
 
     for (let i = 2; i < data.length; i++) {
       const row = data[i];
-      // Only show rows that contain a student code
       if(row[0] && row[1] && row[1].includes('EDUR9')) { 
-        tbody.innerHTML += `<tr>
+        // We add search keywords as a data attribute to the row
+        const searchString = `${row[0]} ${row[1]}`.toLowerCase();
+        
+        tbody.innerHTML += `<tr data-search="${searchString}">
           <td class="fw-bold text-dark">${row[0]}</td>
           <td><span class="badge bg-dark text-white p-2">${row[1]}</span></td>
           <td class="text-center text-muted">${row[2] || '-'}</td>
@@ -202,40 +219,65 @@
     document.getElementById('tableContainer').classList.remove('d-none');
   }
 
+  // UPGRADE: Live Table Filtering
+  function filterTable() {
+    const input = document.getElementById('searchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('#tableBody tr');
+    
+    rows.forEach(row => {
+      const searchData = row.getAttribute('data-search');
+      if (searchData.includes(input)) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  }
+
+  // UPGRADE: Custom Notification System
+  function showToast(message, type) {
+    const toastEl = document.getElementById('statusToast');
+    const toastBody = document.getElementById('toastMessage');
+    
+    toastBody.innerText = message;
+    
+    // Switch colors based on success/error
+    toastEl.classList.remove('bg-success', 'bg-danger');
+    toastEl.classList.add(`bg-${type}`);
+    
+    const toast = new bootstrap.Toast(toastEl, { delay: 4000 });
+    toast.show();
+  }
+
   function openEditModal(rowIndex) {
     const row = globalData[rowIndex];
     
-    // Identity
     document.getElementById('f_name').value = row[0];
     document.getElementById('f_code').value = row[1];
     
-    // Software (Cols C, D, E -> Array indexes 2, 3, 4)
-    document.getElementById('f_autocad').value = row[2] || 0;
-    document.getElementById('f_evo').value = row[3] || 0;
-    document.getElementById('f_excel').value = row[4] || 0;
+    document.getElementById('f_autocad').value = row[2] || "";
+    document.getElementById('f_evo').value = row[3] || "";
+    document.getElementById('f_excel').value = row[4] || "";
     
-    // Design Tasks 1-10
-    document.getElementById('f_t1').value = row[6] || 0;
-    document.getElementById('f_t2').value = row[7] || 0;
-    document.getElementById('f_t3').value = row[9] || 0;
-    document.getElementById('f_t4').value = row[10] || 0;
-    document.getElementById('f_t5').value = row[12] || 0;
-    document.getElementById('f_t6').value = row[13] || 0;
-    document.getElementById('f_t7').value = row[15] || 0;
-    document.getElementById('f_t8').value = row[16] || 0;
-    document.getElementById('f_t9').value = row[17] || 0;
-    document.getElementById('f_t10').value = row[18] || 0;
+    document.getElementById('f_t1').value = row[6] || "";
+    document.getElementById('f_t2').value = row[7] || "";
+    document.getElementById('f_t3').value = row[9] || "";
+    document.getElementById('f_t4').value = row[10] || "";
+    document.getElementById('f_t5').value = row[12] || "";
+    document.getElementById('f_t6').value = row[13] || "";
+    document.getElementById('f_t7').value = row[15] || "";
+    document.getElementById('f_t8').value = row[16] || "";
+    document.getElementById('f_t9').value = row[17] || "";
+    document.getElementById('f_t10').value = row[18] || "";
 
-    // Tech Office Tasks 11-14 (Cols V, W, Y, Z -> Array indexes 21, 22, 24, 25)
-    document.getElementById('f_t11').value = row[21] || 0;
-    document.getElementById('f_t12').value = row[22] || 0;
-    document.getElementById('f_t13').value = row[24] || 0;
-    document.getElementById('f_t14').value = row[25] || 0;
+    document.getElementById('f_t11').value = row[21] || "";
+    document.getElementById('f_t12').value = row[22] || "";
+    document.getElementById('f_t13').value = row[24] || "";
+    document.getElementById('f_t14').value = row[25] || "";
 
-    // Light Current Tasks 15-17 (Cols AC, AD, AE -> Array indexes 28, 29, 30)
-    document.getElementById('f_t15').value = row[28] || 0;
-    document.getElementById('f_t16').value = row[29] || 0;
-    document.getElementById('f_t17').value = row[30] || 0;
+    document.getElementById('f_t15').value = row[28] || "";
+    document.getElementById('f_t16').value = row[29] || "";
+    document.getElementById('f_t17').value = row[30] || "";
 
     new bootstrap.Modal(document.getElementById('studentModal')).show();
   }
@@ -283,14 +325,14 @@
     .then(result => {
       if(result.status === "success") {
         bootstrap.Modal.getInstance(document.getElementById('studentModal')).hide();
-        loadData(); // Syncs table with fresh data
+        showToast("Database updated securely!", "success");
+        loadData(); // Syncs table
       } else {
-        alert("Database Error: " + result.message);
+        showToast("Error: " + result.message, "danger");
       }
     })
     .catch(error => {
-      console.error("Save error:", error);
-      alert("Failed to save data. Please check your internet connection.");
+      showToast("Network Error: Failed to save data.", "danger");
     })
     .finally(() => {
       btn.innerHTML = '<i class="fas fa-cloud-upload-alt me-2"></i>Save to Database';
